@@ -163,6 +163,41 @@ This document compares **Azure Service Bus** and **Apache Kafka**, with a focus 
 | Replay | Limited to retention/TTL (subscriptions keep messages) | Native replay via offsets and retention |
 | Transactions | AMQP transactions, supports cross-entity operations | Producer & transactional guarantees available |
 
+### Diagram: Consumer group -> Partition mapping (queue-like behavior)
+Below is a Mermaid diagram illustrating how a Kafka topic with partitions maps to consumers in a consumer group — the basis for queue-like competing-consumer behavior.
+
+```mermaid
+graph LR
+  subgraph Topic[Topic: orders]
+    direction TB
+    P0[Partition P0]
+    P1[Partition P1]
+    P2[Partition P2]
+  end
+  subgraph CGBilling[Consumer Group: billing]
+    C1[Consumer C1]
+    C2[Consumer C2]
+    C3[Consumer C3]
+  end
+  P0 --> C1
+  P1 --> C2
+  P2 --> C3
+
+  subgraph CGAnalytics[Consumer Group: analytics]
+    A1[Consumer A1]
+    A2[Consumer A2]
+  end
+  P0 --> A1
+  P1 --> A2
+```
+
+Explanation:
+- Each partition is assigned to a single consumer within the same consumer group; for example P0->C1, P1->C2, P2->C3 in a 3-partition topic with 3 consumers.
+- If there are fewer consumers than partitions, some consumers will own multiple partitions; if there are more consumers than partitions, some consumers will be idle.
+- Messages in a partition are delivered to the single assigned consumer in the group, so the group as a whole consumes each message exactly once (per group), providing queue-like behavior for that group.
+
+You can also have multiple consumer groups (e.g., `billing` and `analytics`), where each group independently reads the topic and processes messages at its own pace (pub/sub behavior).
+
 ---
 
 ## 10. Summary
@@ -214,6 +249,38 @@ Use the checklist below to pick the more appropriate platform quickly:
 ---
 
 **End of ServiceBus vs Kafka doc**
+
+---
+
+## 13. Does Kafka have a Queue model like Service Bus?
+Kafka doesn't expose a first-class "Queue" object like Azure Service Bus. However, Kafka's combination of topics, partitions, and consumer groups provide queue-like behavior in practice.
+
+### Key points
+- **No broker-side Queue abstraction**: Service Bus separates Queues (single consumer per message) from Topics (multi-subscriber). Kafka has only Topics — queues are approximated by consumer groups.
+- **Queue-like behavior via consumer groups**: When consumers share the same consumer group, Kafka treats each partition as being consumed by one consumer in the group at a time. That yields competing-consumer behavior: messages in a partition are processed by a single consumer in the group (queue-like semantics per partition).
+- **Retention vs lifecycle**: Service Bus removes messages on successful completion, while Kafka retains messages for a configured retention period and consumers manage offsets to mark progress.
+- **No peer lock / settlement**: Service Bus has peek-lock/Complete/Abandon/DeadLetter operations; Kafka lacks server-side locks and settlement semantics; consumers manage commits and implement retry/DLQ logic themselves.
+- **Ordering semantics**: Kafka guarantees ordering only inside a partition; Service Bus supports ordering via sessions or single-partition entities.
+- **Replay and offsets**: Kafka supports native replay by seeking to earlier offsets; Service Bus requires retention or other patterns for replay.
+
+### Practical guidance: making Kafka act like a queue
+- To implement queue behavior with Kafka, use a single consumer group for all consumers of a logical queue. The group will distribute partitions to consumers so each message is processed by a single group instance.
+- Use partition keys for related messages when preserving ordering is required, or keep the topic single-partition for strict global order (with throughput tradeoff).
+- Implement dead-lettering by publishing messages to a dedicated dead-letter topic after a configurable number of retries.
+- Use manual offset commits after processing to ensure at-least-once processing semantics.
+
+### Quick comparison table: Service Bus Queue vs Kafka (queue-like behavior)
+| Feature | Service Bus Queue | Kafka (Topic + Consumer Group) |
+|---|---:|---:|
+| Queue abstraction | Yes, broker-managed queue | No, topic + consumer group emulate queue behavior |
+| Message ownership & lock | Yes (peek-lock, lock token) | No server-side lock; consumer commits offsets |
+| Message deletion | Broker deletes on Complete | Broker retains (retention); consumers track offsets |
+| DLQ | Built-in DLQ per queue | Not built-in; implement via a dead-letter topic |
+| Replay | Limited; typically not used for long-term replay | Native via offsets and retention (easy rewind) |
+| Ordering | Session or single partition | Ordering guaranteed per-partition only |
+| Consumer model | Broker push or pull | Consumer-driven pull (client polls) |
+
+---
 
 ---
 
