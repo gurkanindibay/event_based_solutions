@@ -80,7 +80,53 @@ Event Hubs follows a **push-pull** delivery model:
                           |--> [Partition 3] --+--> [Consumer Group B] --> [Stream Analytics]
 ```
 
-## 6. Best Practices
+## 6. Access Control (Security)
+
+### Authentication
+Event Hubs supports two primary authentication mechanisms:
+
+1. **Microsoft Entra ID (Recommended):**
+   - Authenticate using Azure AD identities (users, groups, or managed identities).
+   - Eliminates the need to store connection strings in code.
+   - Supports OAuth 2.0.
+
+2. **Shared Access Signatures (SAS):**
+   - Uses cryptographic keys to generate tokens with specific permissions and expiry times.
+   - Useful for clients that cannot use Entra ID.
+   - Can be defined at the Namespace or Event Hub level.
+
+### Application Identity Strategy
+Applications connecting to Event Hubs need an identity to be authenticated and authorized.
+
+1. **Managed Identities (Recommended for Azure-hosted apps):**
+   - If your app runs on Azure (VM, App Service, AKS, Functions, Container Apps), enable a **System-Assigned** or **User-Assigned** Managed Identity.
+   - **No App Registration needed:** The identity is managed by the Azure platform.
+   - Grant RBAC roles (e.g., *Azure Event Hubs Data Receiver*) directly to the Managed Identity.
+   - **Benefit:** No secrets to rotate or store in code.
+
+2. **App Registrations (Service Principals) (For external/local apps):**
+   - If your app runs outside Azure (on-prem, other clouds, or local dev), create an **App Registration** in Entra ID.
+   - This creates a **Service Principal**.
+   - You must manage a **Client Secret** or **Certificate**.
+   - Grant RBAC roles to the Service Principal.
+   - **Benefit:** Secure, role-based access for external applications.
+
+### Authorization
+Authorization determines what an authenticated principal can do.
+
+#### Azure RBAC (Role-Based Access Control)
+When using Entra ID, assign built-in roles to scopes (Resource Group, Namespace, or Event Hub):
+- **Azure Event Hubs Data Owner:** Full access to data (send and receive).
+- **Azure Event Hubs Data Sender:** Send access only.
+- **Azure Event Hubs Data Receiver:** Receive access only.
+
+#### SAS Policies
+When using SAS, policies grant specific rights:
+- **Send:** Permission to send events.
+- **Listen:** Permission to receive events.
+- **Manage:** Permission to manage topology (create/delete consumer groups, etc.) + Send + Listen.
+
+## 7. Best Practices
 - **Partition Count:** Set at creation (difficult to change later). Match roughly to expected concurrent consumers.
 - **Batching:** Send events in batches to improve throughput.
 - **Security:** Use Shared Access Signatures (SAS) or Azure Active Directory (Entra ID) for access control.
