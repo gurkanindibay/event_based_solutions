@@ -193,6 +193,20 @@ Event Grid divides access between resource (management) operations and data-plan
 - **User/data level:** Publishers use `EventGrid Data Sender` to push events (SAS tokens, managed identity, or keys), and subscribers rely on delivery endpoints that may also require `EventGrid Data Receiver` or custom authentication to consume events safely.
 - **Scope:** Assign roles at subscription, resource group, or individual topic level to restrict who can configure routes versus who can send or receive payloads.
 
+### Certificates & TLS
+Event Grid requires validated HTTPS endpoints for data delivery and endpoint validation must complete over TLS:
+- **Trusted CA:** Delivery endpoints must present certificates issued by public/trusted root CAs (including Azure-managed certificates); self-signed certs are not accepted unless you establish a private endpoint with a custom root capable of being trusted by Event Grid.
+- **Hostname match:** The certificate's subject must match the DNS name used during subscription creation, and wildcard certificates are supported when the wildcard covers the specified endpoint domain.
+- **Automatic renewal:** Use Azure App Service-managed certificates or Azure Front Door to manage renewal, preventing delivery breaks when certificates expire.
+- **Mutual TLS:** Not required for standard Event Grid delivery; if you implement client cert authentication at the endpoint you must ensure Event Grid's requests are allowed through your network controls.
+
+### Endpoint Validation
+When an event subscription targets a webhook or HTTP endpoint, Event Grid performs validation before sending business events:
+- **Validation event:** Event Grid sends a `Microsoft.EventGrid.SubscriptionValidationEvent` payload that includes a `validationCode` and `validationUrl`.
+- **Expected response:** The endpoint must respond within 30 seconds with an HTTP 200 and either echo the `validationCode` in the body or follow the `validationUrl` to confirm ownership.
+- **Failed validation:** If the endpoint never acknowledges the validation event or responds with an error, the subscription stays in a `PendingValidation` state and delivery never starts; retry attempts are made but eventually the subscription is disabled.
+- **Automation tip:** Functions/Logic Apps listening for Event Grid events should explicitly handle the validation event (check `eventType` and return the code) before processing normal events.
+
 ---
 
 **End of Reference Guide**
