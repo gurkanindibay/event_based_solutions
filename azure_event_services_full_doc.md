@@ -187,6 +187,12 @@ If an event cannot be delivered after all retry attempts or the TTL expires:
 - **Purpose:** Allows for later analysis, debugging, and manual reconciliation of missed events.
 - **Content:** The dead-lettered blob contains the original event payload along with the error reason for the failure.
 
+### Access Control & Permissions
+Event Grid divides access between resource (management) operations and data-plane delivery:
+- **System/operations level:** Roles such as `Owner`, `Contributor`, `EventGrid Contributor`, and `EventGrid Event Subscription Contributor` control who can create or update topics, event subscriptions, filters, and delivery settings (`Microsoft.EventGrid/*` operations).
+- **User/data level:** Publishers use `EventGrid Data Sender` to push events (SAS tokens, managed identity, or keys), and subscribers rely on delivery endpoints that may also require `EventGrid Data Receiver` or custom authentication to consume events safely.
+- **Scope:** Assign roles at subscription, resource group, or individual topic level to restrict who can configure routes versus who can send or receive payloads.
+
 ---
 
 **End of Reference Guide**
