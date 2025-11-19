@@ -165,7 +165,67 @@ User/API → Service Bus (commands) → Worker → Event Hubs (telemetry) → St
 
 ---
 
-## 8. Event Grid Advanced Features
+## 8. Data Integration Models Comparison
+
+| Aspect | Event Grid | Event Hubs | Service Bus |
+|--------|------------|------------|-------------|
+| **Model** | Push-Push | Push-Pull | Push-Pull (Hybrid) |
+| **Publisher** | Pushes events to Event Grid | Pushes events to partitions | Pushes messages to queue/topic |
+| **Consumer** | Receives pushed events via HTTP | Pulls events from partitions | Pulls messages (with lock/session) |
+| **Delivery Control** | Event Grid controls delivery | Consumer controls read pace | Consumer controls receive pace |
+| **Endpoint Requirement** | HTTP endpoint required | No endpoint (consumer connects) | No endpoint (receiver connects) |
+| **Replay Capability** | No | Yes (consumer resets offset) | Limited (DLQ only) |
+| **Ordering** | No guarantees | Per-partition ordering | Session-based FIFO |
+| **Backpressure** | Subscriber must handle | Consumer controls rate | Consumer controls rate + lock renewal |
+| **State Management** | Stateless (Event Grid manages) | Consumer manages offsets | Service Bus manages message state |
+| **Best Use Case** | Reactive automation, webhooks | High-volume streaming, analytics | Reliable command processing, workflows |
+
+### Push-Push (Event Grid)
+**How it works:** Event sources push events → Event Grid receives and routes → Event Grid pushes to subscribers.
+
+**Advantages:**
+- Minimal consumer complexity (just expose an endpoint)
+- Low latency for event delivery
+- No polling overhead
+- Built-in retry and dead-lettering
+
+**Disadvantages:**
+- Requires publicly accessible or private endpoints
+- No replay capability
+- Subscriber must handle bursts
+
+### Push-Pull (Event Hubs)
+**How it works:** Producers push events → Event Hubs persists to partitions → Consumers pull at their pace.
+
+**Advantages:**
+- High throughput and scalability
+- Consumers control processing rate
+- Full replay capability
+- Multiple independent consumer groups
+
+**Disadvantages:**
+- More complex consumer implementation
+- Requires checkpoint management
+- Continuous polling overhead
+
+### Push-Pull Hybrid (Service Bus)
+**How it works:** Senders push messages → Service Bus queues → Receivers pull with locks and sessions.
+
+**Advantages:**
+- Guaranteed delivery and ordering (sessions)
+- Built-in dead-letter handling
+- Transactional support
+- Load leveling between producers/consumers
+
+**Disadvantages:**
+- More complex than Event Grid
+- Lock timeout management required
+- No replay (except DLQ)
+- Higher latency than Event Hubs
+
+---
+
+## 9. Event Grid Advanced Features
 
 ### Message Schemas
 Event Grid supports multiple schemas for event data:
