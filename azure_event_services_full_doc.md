@@ -165,6 +165,30 @@ User/API → Service Bus (commands) → Worker → Event Hubs (telemetry) → St
 
 ---
 
+## 8. Event Grid Advanced Features
+
+### Message Schemas
+Event Grid supports multiple schemas for event data:
+- **Event Grid Schema:** The default schema with properties like `subject`, `eventType`, `eventTime`, `id`, and `data`.
+- **CloudEvents Schema:** An open standard (CNCF) for describing event data, enabling interoperability across different cloud providers and platforms.
+- **Custom Input Schema:** Allows mapping custom JSON fields to Event Grid requirements, useful when you cannot change the event publisher's format.
+
+### Retry & Retry Policies
+When Event Grid fails to deliver an event to an endpoint, it retries based on a schedule:
+- **Schedule:** It uses an exponential backoff policy (e.g., 10s, 30s, 1m, 5m, 10m, 30m, 1h) up to 24 hours.
+- **Randomization:** A small randomization factor is added to avoid thundering herd issues.
+- **Configurable Policies:**
+    - **Max Delivery Attempts:** Configurable between 1 and 30.
+    - **Event Time-to-Live (TTL):** Configurable duration (e.g., 1 minute to 1440 minutes) after which the event is dropped if not delivered.
+
+### Dead Letter Events
+If an event cannot be delivered after all retry attempts or the TTL expires:
+- **Dead Lettering:** You can configure a storage account (blob container) to store these undelivered events.
+- **Purpose:** Allows for later analysis, debugging, and manual reconciliation of missed events.
+- **Content:** The dead-lettered blob contains the original event payload along with the error reason for the failure.
+
+---
+
 **End of Reference Guide**
 "
 
