@@ -207,6 +207,13 @@ When an event subscription targets a webhook or HTTP endpoint, Event Grid perfor
 - **Failed validation:** If the endpoint never acknowledges the validation event or responds with an error, the subscription stays in a `PendingValidation` state and delivery never starts; retry attempts are made but eventually the subscription is disabled.
 - **Automation tip:** Functions/Logic Apps listening for Event Grid events should explicitly handle the validation event (check `eventType` and return the code) before processing normal events.
 
+### Delivery Response Handling
+When Event Grid receives a `400 (Bad Request)` or `413 (Request Entity Too Large)` during delivery:
+- **No retries:** These status codes are treated as permanent failures. Event Grid still makes that single delivery attempt, records the failure, and will not retry that event again even though the subscription stays active.
+- **Failure tracking:** The failed delivery is recorded in metrics/logs and, if dead-lettering is enabled, the event is written there for inspection; otherwise the payload is eventually dropped once the TTL expires.
+- **Subscription footprint:** The subscription stays enabled so future deliveries continue, but repeated 400/413 responses should trigger troubleshooting of payload size limits and validation logic.
+- **Payload guidance:** Split oversized payloads, trim unnecessary properties, and ensure subscribers parse the schema properly to avoid 400 responses.
+
 ---
 
 **End of Reference Guide**
