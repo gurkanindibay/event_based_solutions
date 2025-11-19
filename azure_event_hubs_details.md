@@ -33,6 +33,11 @@ Automatically capture the streaming data in Azure Blob Storage or Azure Data Lak
 
 ### Apache Kafka Compatibility
 Event Hubs provides an endpoint compatible with Kafka producer and consumer APIs. You can use existing Kafka applications without running your own Kafka cluster.
+### Schema Registry Considerations
+- **No built-in Confluent registry:** Event Hubs does not include a Confluent Schema Registry service. Schema registries are separate services and must be hosted/available to your clients.
+- **Typically no code changes:** If your Kafka producers/consumers already use an external schema registry (e.g., Confluent, Apicurio) and standard Kafka serializers (Avro/Protobuf), you usually only need to update serializer configuration (registry URLs and auth) to point to the registry; your application code typically does not require changes.
+- **Using Azure Schema Registry:** If you adopt Azure Schema Registry instead of your existing registry, you may need to switch to Azure-compatible serializer libraries or update serializer configuration; this can require minor code or dependency changes.
+- **Network & auth:** Ensure any registry (Confluent or Azure) is reachable from your client environment and that client serializers are configured with the correct authentication and TLS settings.
 
 ### Checkpointing
 Consumers store their position in the partition stream. If a worker fails, a new one picks up from the last checkpoint.
