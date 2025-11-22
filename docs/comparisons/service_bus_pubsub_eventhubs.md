@@ -110,7 +110,34 @@ This document provides a structured, technical, and practical comparison for arc
 
 ---
 
-## 7. Mental Model
+## 7. Scenarios & Use Cases
+
+### 7.1 Distinct Scenarios (Clear Winners)
+
+| Scenario | Best Choice | Why? |
+|----------|:-----------:|------|
+| **Order Processing** | **Service Bus** | Requires transactions, exactly-once delivery, and dead-lettering for failed orders. |
+| **IoT Telemetry** | **Event Hubs** | Millions of small sensor readings/sec; occasional loss is acceptable; need to replay history. |
+| **User Activity Tracking** | **Event Hubs** | Clickstreams, page views, and logs are high volume and need stream analytics. |
+| **Workflow Orchestration** | **Service Bus** | Long-running processes (Sagas) need state management, deferred messages, and cancellation. |
+| **Financial Transactions** | **Service Bus** | Money transfers require ACID-like guarantees and zero data loss. |
+| **Log Aggregation** | **Event Hubs** | Centralizing logs from thousands of servers for Splunk/ElasticSearch. |
+
+### 7.2 Common / Overlapping Scenarios
+
+Sometimes both services *could* work, but one is usually better optimized.
+
+#### **Scenario: Microservices Integration**
+*   **Service Bus:** Best for **Command/Control** patterns. Service A tells Service B to "Do X". If B is down, the message waits.
+*   **Event Hubs:** Best for **Notification/State Change** patterns. Service A says "X happened". Service B, C, and D react to the stream of changes.
+
+#### **Scenario: Data Ingestion for Database**
+*   **Service Bus:** Good if every message represents a critical row that must not be lost (e.g., banking ledger).
+*   **Event Hubs:** Good if you are buffering massive data to dump into a Data Lake or Data Warehouse (e.g., via Capture feature).
+
+---
+
+## 8. Mental Model
 
 ### 7.1 Service Bus
 > A **reliable enterprise mailbox system** where every subscriber gets its own inbox and messages remain until processed.
@@ -137,6 +164,21 @@ This document provides a structured, technical, and practical comparison for arc
 - Kafka-like event streaming  
 - Replay and offset-based processing  
 - Millions of events per second  
+
+### 8.1 The "Value of a Message" Heuristic
+> **Can we say: "If each message matters → Service Bus. If message loss is acceptable → Event Hubs"?**
+
+**Yes, largely.** This is a great rule of thumb, with a small nuance:
+
+*   **Service Bus (High Value / Zero Loss):**
+    *   Every message is critical (e.g., a payment, an order).
+    *   The system is designed to **stop and retry** if a single message fails.
+    *   *Philosophy:* "I cannot proceed until this specific message is handled."
+
+*   **Event Hubs (High Volume / Tolerable Loss):**
+    *   The **stream** or **aggregate** is critical, but individual data points might be disposable.
+    *   If one temperature reading is lost, the next one comes in 1 second.
+    *   *Philosophy:* "Keep the pipe moving; don't block millions of events for one bad data point."
 
 ---
 
