@@ -50,6 +50,15 @@ This document provides a structured, technical, and practical comparison for arc
 | Retention | Until consumed or TTL | Time-based retention (7+ days) |
 | Replay messages | No | Yes (by resetting offset) |
 
+### 3.1 Inner Architecture & Mechanism
+
+| Feature | Service Bus | Event Hubs |
+|---------|-------------|------------|
+| **Broker State** | **Stateful Broker**<br>Tracks state of *each* message (Active, Locked, Completed). | **Stateless Broker**<br>Log-based. Does not track consumer state per message. |
+| **Cursor Management** | **Server-Side Cursor**<br>Broker knows what you've read. | **Client-Side Cursor**<br>Consumer (or Checkpoint Store) tracks offset. |
+| **Consumption Model** | **Competing Consumers**<br>Multiple consumers on one subscription share the load (1 message = 1 consumer). | **Partitioned Consumers**<br>Consumers take ownership of partitions (1 partition = 1 consumer). |
+| **Message Deletion** | **Destructive Read**<br>Message is deleted after `Complete()`. | **Non-Destructive Read**<br>Events remain until retention period expires. |
+
 ---
 
 ## 4. Throughput & Scale
